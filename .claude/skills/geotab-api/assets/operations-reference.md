@@ -3,10 +3,15 @@
 ## Base URL
 
 ```
-POST https://{server}/apiv1
+POST https://my.geotab.com/apiv1      ← use for the first Authenticate when the server is unknown
+POST https://{path}/apiv1             ← use for every call after Authenticate, where {path} comes from the auth response
 ```
 
-All calls share this endpoint. `{server}` is the MyGeotab server (e.g., `my.geotab.com`, `my3.geotab.com`).
+All calls share the `/apiv1` path; only the server host changes. Resolve it concretely — never leave `{server}` as a literal placeholder in output:
+
+- Server unknown → authenticate against `https://my.geotab.com/apiv1`.
+- `Authenticate` returns `path` (e.g. `my3.geotab.com`) → all later calls go to `https://my3.geotab.com/apiv1`. A `path` of `"ThisServer"` means keep the current host.
+- Server already known → use it directly (e.g. `https://my3.geotab.com/apiv1`).
 
 ---
 
@@ -16,9 +21,9 @@ All calls share this endpoint. `{server}` is the MyGeotab server (e.g., `my.geot
 {
   "method": "Authenticate",
   "params": {
-    "database": "CompanyName",
-    "userName": "user@example.com",
-    "password": "secret"
+    "database": "CompanyName",        // required
+    "userName": "user@example.com",   // required
+    "password": "secret"              // required
   }
 }
 ```
@@ -40,6 +45,8 @@ All calls share this endpoint. `{server}` is the MyGeotab server (e.g., `my.geot
 Use `credentials` + `path` (as the new server) in all subsequent calls. If `path` is `"ThisServer"`, keep using the server you authenticated against. On `InvalidUserException` in a later call, the session expired — re-authenticate and retry.
 
 All dates in requests and responses are ISO 8601 UTC: `2024-01-01T00:00:00.000Z`.
+
+**Annotation convention:** every field in the example bodies below is marked inline as `// required` or `// optional`. `credentials` (with `database`, `userName`, `sessionId`) is required in `params` of every call after Authenticate and is marked once at the object level.
 
 ---
 
@@ -68,26 +75,26 @@ All dates in requests and responses are ISO 8601 UTC: `2024-01-01T00:00:00.000Z`
 {
   "method": "Add",
   "params": {
-    "typeName": "User",
-    "entity": {
-      "name": "John Doe",
-      "firstName": "John",
-      "lastName": "Doe",
+    "typeName": "User",               // required
+    "entity": {                        // required
+      "name": "John Doe",             // required, login name (usually the email)
+      "firstName": "John",            // required
+      "lastName": "Doe",              // required
       "employeeNo": "EMP001",         // optional
-      "password": "InitialPass1!",
+      "password": "InitialPass1!",    // required
       "changePassword": true,          // optional, force change on first login
       "comment": "Fleet driver",       // optional
-      "groups": [
+      "groups": [                      // required, at least one valid group
         { "id": "GroupCompanyId" }
       ],
-      "isDriver": true,
+      "isDriver": true,               // required (true for drivers)
       "licenseNumber": "DL123456",    // optional
       "licenseProvince": "ON",        // optional, province/state code
       "isEmailReportEnabled": false,  // optional
       "activeFrom": "2024-01-01T00:00:00.000Z", // optional
       "activeTo": "2099-12-31T00:00:00.000Z"    // optional
     },
-    "credentials": {
+    "credentials": {                   // required
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"
@@ -110,12 +117,12 @@ All dates in requests and responses are ISO 8601 UTC: `2024-01-01T00:00:00.000Z`
 {
   "method": "Get",
   "params": {
-    "typeName": "User",
-    "search": {
+    "typeName": "User",      // required
+    "search": {              // optional — empty or omitted = all entities
       "isDriver": true       // optional — filter fields vary by entity
     },
     "resultsLimit": 100,     // optional, default unlimited
-    "credentials": {
+    "credentials": {         // required
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"
@@ -159,14 +166,14 @@ Empty `search: {}` returns all entities of that type. To fetch a single entity b
 {
   "method": "Get",
   "params": {
-    "typeName": "Trip",
-    "search": {
-      "deviceSearch": { "id": "bXXXXXXXXXXX" },
-      "fromDate": "2024-01-01T00:00:00.000Z",
-      "toDate": "2024-01-08T00:00:00.000Z"
+    "typeName": "Trip",                            // required
+    "search": {                                    // optional, but recommended to bound the result set
+      "deviceSearch": { "id": "bXXXXXXXXXXX" },   // optional, filter by device
+      "fromDate": "2024-01-01T00:00:00.000Z",     // optional
+      "toDate": "2024-01-08T00:00:00.000Z"        // optional
     },
     "resultsLimit": 1000,    // optional
-    "credentials": {
+    "credentials": {         // required
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"
@@ -185,16 +192,16 @@ Empty `search: {}` returns all entities of that type. To fetch a single entity b
 {
   "method": "Set",
   "params": {
-    "typeName": "User",
-    "entity": {
-      "id": "aXXXXXXXXXXX",
-      "name": "John Doe",
-      "firstName": "John",
-      "lastName": "Doe Updated",
-      "isDriver": true,
-      "groups": [{ "id": "GroupCompanyId" }]
+    "typeName": "User",               // required
+    "entity": {                        // required — the FULL entity, not a partial patch
+      "id": "aXXXXXXXXXXX",           // required
+      "name": "John Doe",             // required
+      "firstName": "John",            // required
+      "lastName": "Doe Updated",      // required
+      "isDriver": true,               // required
+      "groups": [{ "id": "GroupCompanyId" }]  // required
     },
-    "credentials": {
+    "credentials": {                   // required
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"
@@ -218,11 +225,11 @@ Set replaces the full entity — always include all required fields, not just ch
 {
   "method": "Remove",
   "params": {
-    "typeName": "User",
-    "entity": {
-      "id": "aXXXXXXXXXXX"
+    "typeName": "User",      // required
+    "entity": {              // required — only the id is needed
+      "id": "aXXXXXXXXXXX"   // required
     },
-    "credentials": {
+    "credentials": {         // required
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"
@@ -246,13 +253,13 @@ Removal is irreversible via the API. Non-destructive alternative: deactivate wit
 {
   "method": "GetFeed",
   "params": {
-    "typeName": "LogRecord",
-    "search": {
-      "deviceSearch": { "id": "bXXXXXXXXXXX" }
+    "typeName": "LogRecord",                       // required
+    "search": {                                    // optional, narrows the feed
+      "deviceSearch": { "id": "bXXXXXXXXXXX" }    // optional
     },
-    "fromVersion": "0000000000000000",  // use "0..." for first call
-    "resultsLimit": 50000,
-    "credentials": {
+    "fromVersion": "0000000000000000",  // required — use "0..." for first call, then last toVersion
+    "resultsLimit": 50000,              // optional, max 50000
+    "credentials": {                    // required
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"
@@ -281,18 +288,18 @@ Save `toVersion` and pass it as `fromVersion` on the next call to get only new r
 {
   "method": "Add",
   "params": {
-    "typeName": "Device",
-    "entity": {
-      "serialNumber": "GT9000000000",
-      "name": "Truck 01",
-      "groups": [{ "id": "GroupCompanyId" }],
+    "typeName": "Device",               // required
+    "entity": {                          // required
+      "serialNumber": "GT9000000000",   // required, GO device serial
+      "name": "Truck 01",               // required, display name in the fleet
+      "groups": [{ "id": "GroupCompanyId" }],  // required, at least one valid group
       "comment": "Main delivery truck",  // optional
       "engineVehicleIdentificationNumber": "1HGBH41JXMN109186", // optional
       "vehicleIdentificationNumber": "1HGBH41JXMN109186",       // optional
       "licensePlate": "ABC-1234",        // optional
       "activeFrom": "2024-01-01T00:00:00.000Z"  // optional
     },
-    "credentials": { ... }
+    "credentials": { ... }               // required
   }
 }
 ```
@@ -305,17 +312,17 @@ Save `toVersion` and pass it as `fromVersion` on the next call to get only new r
 {
   "method": "Add",
   "params": {
-    "typeName": "Zone",
-    "entity": {
-      "name": "Warehouse Barcelona",
-      "points": [
+    "typeName": "Zone",                  // required
+    "entity": {                           // required
+      "name": "Warehouse Barcelona",     // required
+      "points": [                         // required, polygon outline (min 3 points)
         { "x": 2.1734, "y": 41.3851 },
         { "x": 2.1750, "y": 41.3851 },
         { "x": 2.1750, "y": 41.3870 },
         { "x": 2.1734, "y": 41.3870 }
       ],
-      "zoneTypes": [{ "id": "ZoneTypeCustomerId" }],
-      "groups": [{ "id": "GroupCompanyId" }],
+      "zoneTypes": [{ "id": "ZoneTypeCustomerId" }],  // required
+      "groups": [{ "id": "GroupCompanyId" }],          // required
       "displayed": true,                              // optional, show on map
       "mustIdentifyStops": false,                     // optional
       "fillColor": { "r": 255, "g": 0, "b": 0, "a": 80 }, // optional
@@ -323,7 +330,7 @@ Save `toVersion` and pass it as `fromVersion` on the next call to get only new r
       "activeTo": "2099-12-31T00:00:00.000Z",        // optional
       "comment": "Main warehouse geofence"            // optional
     },
-    "credentials": { ... }
+    "credentials": { ... }                // required
   }
 }
 ```
@@ -340,11 +347,11 @@ Run several calls in one HTTP request — credentials go once at the top level, 
 {
   "method": "ExecuteMultiCall",
   "params": {
-    "calls": [
+    "calls": [               // required, one object per call (no credentials inside)
       { "method": "Get", "params": { "typeName": "Device", "resultsLimit": 10 } },
       { "method": "Get", "params": { "typeName": "User", "search": { "isDriver": true } } }
     ],
-    "credentials": {
+    "credentials": {         // required, once at top level
       "database": "CompanyName",
       "userName": "admin@example.com",
       "sessionId": "abc123"

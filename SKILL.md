@@ -4,7 +4,7 @@ description: "Trigger: geotab api, create driver, add device, get trips, geotab 
 license: Apache-2.0
 metadata:
   author: gentleman-programming
-  version: "1.1"
+  version: "1.3"
 ---
 
 ## Activation Contract
@@ -14,6 +14,10 @@ Activate when the user describes a Geotab operation goal in plain language — i
 ## Hard Rules
 
 - ALL Geotab API calls use HTTP `POST` to `https://{server}/apiv1`. There are no GET/PUT/DELETE endpoints.
+- Always print the **concrete endpoint URL** in every call, never the raw `{server}` placeholder. Resolve the server like this:
+  - If the user's server is unknown, start at `https://my.geotab.com/apiv1` for the `Authenticate` call.
+  - `Authenticate` returns a `path` field (e.g. `my3.geotab.com`); from then on every call goes to `https://{path}/apiv1` (e.g. `https://my3.geotab.com/apiv1`). If `path` is `"ThisServer"`, keep the server you used.
+  - If the user already told you their server, use it directly in all calls.
 - Every request body is JSON-RPC style: `{ "method": "...", "params": { ... } }`.
 - `params` MUST include `credentials` with `{ "database", "userName", "sessionId" }` or `{ "database", "userName", "password" }`.
 - `typeName` identifies the entity (e.g., `"User"` for drivers, `"Device"` for vehicles).
@@ -47,7 +51,7 @@ Activate when the user describes a Geotab operation goal in plain language — i
 
 ```
 HTTP method : POST
-Endpoint    : https://{server}/apiv1
+Endpoint    : https://my3.geotab.com/apiv1   (concrete URL — my.geotab.com for the first Authenticate, then the resolved `path`)
 Geotab call : {method}
 typeName    : {TypeName}
 
@@ -58,8 +62,8 @@ Response:
 {expected response shape or entity object}
 ```
 
-6. Flag optional fields with `// optional` inline comment in the JSON.
-7. If authentication is not yet obtained, prepend the `Authenticate` call first and note that the returned `path` becomes `{server}` (unless it is `"ThisServer"`, meaning keep the current server).
+6. Annotate **every field** in request bodies with an inline `// required` or `// optional` comment — never leave a field unmarked. Add a short clarifier when useful (e.g. `// optional, force change on first login`).
+7. If authentication is not yet obtained, prepend the `Authenticate` call (endpoint `https://my.geotab.com/apiv1`) and label every later call with the resolved endpoint `https://{path}/apiv1`.
 8. For date filters, use ISO 8601 UTC (`2024-01-01T00:00:00.000Z`). Suggest `resultsLimit` on `Get` calls that may return large sets.
 9. Close with the most likely errors for that call (`InvalidUserException` → re-authenticate; `OverLimitException` → reduce `resultsLimit`/paginate).
 
@@ -67,10 +71,10 @@ Response:
 
 Every response MUST include:
 - HTTP method (always POST)
-- Full endpoint URL pattern
-- Complete JSON request body (no placeholders left unexplained)
+- The concrete endpoint URL for each call (`https://my.geotab.com/apiv1` for the first Authenticate, then `https://{path}/apiv1`) — never leave `{server}` unresolved
+- Complete JSON request body with **every field marked** `// required` or `// optional` inline
 - Expected response shape with field descriptions
-- A note on required vs. optional fields
+- A closing summary of required vs. optional fields
 
 ## References
 
