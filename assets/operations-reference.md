@@ -3,10 +3,15 @@
 ## Base URL
 
 ```
-POST https://{server}/apiv1
+POST https://my.geotab.com/apiv1      ← use for the first Authenticate when the server is unknown
+POST https://{path}/apiv1             ← use for every call after Authenticate, where {path} comes from the auth response
 ```
 
-All calls share this endpoint. `{server}` is the MyGeotab server (e.g., `my.geotab.com`, `my3.geotab.com`).
+All calls share the `/apiv1` path; only the server host changes. Resolve it concretely — never leave `{server}` as a literal placeholder in output:
+
+- Server unknown → authenticate against `https://my.geotab.com/apiv1`.
+- `Authenticate` returns `path` (e.g. `my3.geotab.com`) → all later calls go to `https://my3.geotab.com/apiv1`. A `path` of `"ThisServer"` means keep the current host.
+- Server already known → use it directly (e.g. `https://my3.geotab.com/apiv1`).
 
 ---
 
