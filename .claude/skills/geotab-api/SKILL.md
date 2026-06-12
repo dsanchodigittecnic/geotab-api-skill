@@ -1,5 +1,5 @@
 ---
-name: geotab
+name: geotab-api
 description: "Trigger: geotab api, create driver, add device, get trips, geotab endpoint, geotab call, crear conductor, añadir dispositivo, obtener viajes, eliminar conductor. Map a Geotab goal to HTTP method, endpoint, request body, and expected response."
 license: Apache-2.0
 metadata:
