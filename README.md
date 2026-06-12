@@ -5,6 +5,9 @@ Skill de Claude Code que traduce un objetivo de Geotab en lenguaje natural ("cre
 ## Estructura
 
 ```
+.claude-plugin/
+├── plugin.json                     # manifiesto del plugin (apunta a .claude/skills)
+└── marketplace.json                # catálogo del marketplace "digittecnic"
 .claude/skills/geotab-api/
 ├── SKILL.md                        # contrato de la skill (triggers, reglas, formato de salida)
 └── assets/
@@ -12,11 +15,20 @@ Skill de Claude Code que traduce un objetivo de Geotab en lenguaje natural ("cre
     └── recipes.md                  # workflows multi-paso (alta completa, posición de flota, km, sync)
 ```
 
-La única fuente de verdad es `.claude/skills/geotab-api/` — no hay copias duplicadas que sincronizar.
+La única fuente de verdad es `.claude/skills/geotab-api/` — el plugin la referencia directamente, no hay copias duplicadas que sincronizar.
 
 ## Instalación
 
-**Como skill de proyecto** (recomendado): clona este repositorio y abre Claude Code en él; la skill se carga automáticamente desde `.claude/skills/`.
+**Como plugin** (recomendado para compartir con el equipo) — este repo es a la vez plugin y marketplace:
+
+```
+/plugin marketplace add dsanchodigittecnic/geotab-api-skill
+/plugin install geotab-api@digittecnic
+```
+
+Instalada como plugin, la skill se invoca como `/geotab-api:geotab-api` (o se activa sola al describir una operación de Geotab).
+
+**Como skill de proyecto**: clona este repositorio y abre Claude Code en él; la skill se carga automáticamente desde `.claude/skills/`.
 
 **Como skill de usuario** (disponible en todos tus proyectos):
 

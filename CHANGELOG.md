@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5 — 2026-06-12
+
+- Empaquetada como plugin de Claude Code: `.claude-plugin/plugin.json` (el manifiesto apunta a `.claude/skills/`, sin duplicar la skill) y `.claude-plugin/marketplace.json` (el repo actúa como marketplace `digittecnic`).
+- Instalación: `/plugin marketplace add dsanchodigittecnic/geotab-api-skill` + `/plugin install geotab-api@digittecnic`.
+- README actualizado con las tres vías de instalación (plugin, skill de proyecto, skill de usuario).
+
 ## v1.4 — 2026-06-12
 
 - Nueva entidad `DeviceStatusInfo` (posición en tiempo real) con nota de que "dónde está X" NO es un `Get` de `Device`.
