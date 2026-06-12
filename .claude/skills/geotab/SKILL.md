@@ -1,15 +1,15 @@
 ---
 name: geotab
-description: "Trigger: geotab api, create driver, add device, get trips, geotab endpoint, geotab call. Map a Geotab goal to HTTP method, endpoint, request body, and expected response."
+description: "Trigger: geotab api, create driver, add device, get trips, geotab endpoint, geotab call, crear conductor, añadir dispositivo, obtener viajes, eliminar conductor. Map a Geotab goal to HTTP method, endpoint, request body, and expected response."
 license: Apache-2.0
 metadata:
   author: gentleman-programming
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Activation Contract
 
-Activate when the user describes a Geotab operation goal in plain language (e.g., "create a driver", "get all devices", "update a zone") and needs the exact API call to make.
+Activate when the user describes a Geotab operation goal in plain language — in any language (e.g., "create a driver", "crear conductor", "get all devices", "update a zone") — and needs the exact API call to make. Respond in the user's language; keep JSON field names and Geotab method names verbatim.
 
 ## Hard Rules
 
@@ -21,14 +21,21 @@ Activate when the user describes a Geotab operation goal in plain language (e.g.
 
 ## Decision Gates
 
-| Goal verb | Geotab method | Notes |
-|-----------|--------------|-------|
-| create / add / new | `Add` | Returns the new entity's `id` |
-| get / fetch / search / list / find | `Get` | Use `search` object to filter; empty search = all |
-| update / edit / modify / set | `Set` | Must include full entity with `id` |
-| delete / remove | `Remove` | Requires entity with `id` |
-| login / authenticate | `Authenticate` | Returns `credentials` for subsequent calls |
-| stream / changes since | `GetFeed` | Returns incremental data with `toVersion` token |
+| Goal verb (EN / ES) | Geotab method | Notes |
+|---------------------|--------------|-------|
+| create / add / new — crear / añadir / nuevo | `Add` | Returns the new entity's `id` |
+| get / fetch / search / list / find — obtener / buscar / listar / consultar | `Get` | Use `search` object to filter; empty search = all |
+| update / edit / modify / set — actualizar / editar / modificar | `Set` | Must include full entity with `id` — `Get` it first, modify, send back whole |
+| delete / remove — eliminar / borrar / quitar | `Remove` | Requires entity with `id`; irreversible — see Safety Rules |
+| login / authenticate — autenticar / iniciar sesión | `Authenticate` | Returns `credentials` for subsequent calls |
+| stream / changes since — sincronizar / cambios desde | `GetFeed` | Returns incremental data with `toVersion` token |
+| batch / multiple ops — varias operaciones | `ExecuteMultiCall` | Wraps several calls in one request |
+
+## Safety Rules
+
+- `Remove` is irreversible via the API. Always show a `Get` call first to confirm the target `id`, and mention the non-destructive alternative: `Set` with `activeTo` in the past (deactivation preserves trip history).
+- `Set` replaces the whole entity. Recommend the pattern: `Get` by `id` → modify fields → `Set` the full object. Sending a partial entity silently wipes omitted fields.
+- Never echo real passwords or `sessionId` values from the conversation back into examples — use placeholders.
 
 ## Execution Steps
 
@@ -52,7 +59,9 @@ Response:
 ```
 
 6. Flag optional fields with `// optional` inline comment in the JSON.
-7. If authentication is not yet obtained, prepend the `Authenticate` call first.
+7. If authentication is not yet obtained, prepend the `Authenticate` call first and note that the returned `path` becomes `{server}` (unless it is `"ThisServer"`, meaning keep the current server).
+8. For date filters, use ISO 8601 UTC (`2024-01-01T00:00:00.000Z`). Suggest `resultsLimit` on `Get` calls that may return large sets.
+9. Close with the most likely errors for that call (`InvalidUserException` → re-authenticate; `OverLimitException` → reduce `resultsLimit`/paginate).
 
 ## Output Contract
 
