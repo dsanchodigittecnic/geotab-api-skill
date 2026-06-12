@@ -1,0 +1,14 @@
+{
+  "name": "geotab-api",
+  "displayName": "Geotab API",
+  "description": "Maps a plain-language Geotab fleet goal (create driver, fleet position, trip kms) to the exact MyGeotab API call: endpoint URL, JSON-RPC body with required/optional field annotations, and expected response.",
+  "version": "1.5.0",
+  "author": {
+    "name": "Digit Tecnic",
+    "email": "dsancho@digittecnic.com"
+  },
+  "repository": "https://github.com/dsanchodigittecnic/geotab-api-skill",
+  "license": "Apache-2.0",
+  "keywords": ["geotab", "mygeotab", "fleet", "telematics", "api"],
+  "skills": "./.claude/skills"
+}
