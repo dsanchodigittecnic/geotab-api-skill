@@ -55,11 +55,15 @@ All dates in requests and responses are ISO 8601 UTC: `2024-01-01T00:00:00.000Z`
 | What the user says | typeName |
 |--------------------|----------|
 | driver, conductor | `User` |
-| vehicle, device, truck | `Device` |
+| vehicle, device, truck, unidad | `Device` |
 | zone, geofence, area | `Zone` |
 | group | `Group` |
 | route | `Route` |
 | trip, viaje | `Trip` |
+| position, location, where is, posición, dónde está | `DeviceStatusInfo` |
+| odometer, fuel level, engine hours, odómetro, combustible | `StatusData` + diagnostic id (see Diagnostics table) |
+| assign driver, asignar conductor | `DriverChange` |
+| address from coordinates, dirección | `GetAddresses` (method, not a typeName) |
 | exception, alert | `ExceptionEvent` |
 | rule, regla | `Rule` |
 | diagnostic | `Diagnostic` |
@@ -336,6 +340,144 @@ Save `toVersion` and pass it as `fromVersion` on the next call to get only new r
 ```
 
 `points` is the polygon outline: `x` = longitude, `y` = latitude (note the order). The polygon closes automatically. Built-in zone types: `ZoneTypeCustomerId`, `ZoneTypeHomeId`, `ZoneTypeOfficeId`.
+
+---
+
+## DeviceStatusInfo (Real-time position)
+
+The most common fleet question — "where is vehicle X now?" — is NOT a `Get` of `Device`; it's a `Get` of `DeviceStatusInfo`:
+
+```json
+{
+  "method": "Get",
+  "params": {
+    "typeName": "DeviceStatusInfo",              // required
+    "search": {                                  // optional — omit for the whole fleet
+      "deviceSearch": { "id": "bXXXXXXXXXXX" }  // optional, one vehicle
+    },
+    "credentials": {                             // required
+      "database": "CompanyName",
+      "userName": "admin@example.com",
+      "sessionId": "abc123"
+    }
+  }
+}
+```
+
+**Response:** one object per device — key fields:
+
+```json
+{
+  "result": [
+    {
+      "device": { "id": "bXXXXXXXXXXX" },
+      "driver": { "id": "aXXXXXXXXXXX" },
+      "latitude": 41.3851,
+      "longitude": 2.1734,
+      "speed": 87,                       // km/h
+      "bearing": 270,                    // degrees, -1 if unknown
+      "dateTime": "2026-06-12T18:59:01.000Z",
+      "isDriving": true,
+      "isDeviceCommunicating": true,
+      "currentStateDuration": "00:23:11"
+    }
+  ]
+}
+```
+
+To turn `latitude`/`longitude` into a street address, chain `GetAddresses` (below).
+
+---
+
+## StatusData + Diagnostics (Odometer, fuel, engine hours)
+
+Telemetry readings are `StatusData` filtered by a **known diagnostic id** — never invent these ids:
+
+| Goal | Diagnostic `id` | Unit |
+|------|----------------|------|
+| odometer, km totales | `DiagnosticOdometerAdjustmentId` | meters |
+| fuel level, nivel de combustible | `DiagnosticFuelLevelId` | ratio 0–1 |
+| total fuel used, combustible consumido | `DiagnosticDeviceTotalFuelId` | liters |
+| engine hours, horas de motor | `DiagnosticEngineHoursAdjustmentId` | seconds |
+| engine speed, RPM | `DiagnosticEngineSpeedId` | RPM |
+| coolant temperature | `DiagnosticEngineCoolantTemperatureId` | °C |
+
+```json
+{
+  "method": "Get",
+  "params": {
+    "typeName": "StatusData",                                      // required
+    "search": {                                                    // required in practice — unbounded StatusData is huge
+      "deviceSearch": { "id": "bXXXXXXXXXXX" },                   // required
+      "diagnosticSearch": { "id": "DiagnosticOdometerAdjustmentId" }, // required, from the table above
+      "fromDate": "2026-06-01T00:00:00.000Z",                     // optional, recommended
+      "toDate": "2026-06-12T00:00:00.000Z"                        // optional, recommended
+    },
+    "resultsLimit": 1000,    // optional
+    "credentials": { ... }    // required
+  }
+}
+```
+
+**Response:** array of readings — `{ "data": 123456789, "dateTime": "...", "device": {...}, "diagnostic": {...} }`. `data` is the raw value in the unit from the table (odometer in meters → divide by 1000 for km).
+
+---
+
+## DriverChange (Assign driver to vehicle)
+
+```json
+{
+  "method": "Add",
+  "params": {
+    "typeName": "DriverChange",                  // required
+    "entity": {                                  // required
+      "device": { "id": "bXXXXXXXXXXX" },       // required, the vehicle
+      "driver": { "id": "aXXXXXXXXXXX" },       // required, the User with isDriver: true
+      "dateTime": "2026-06-12T08:00:00.000Z",   // required, when the assignment starts
+      "type": "Driver"                           // required
+    },
+    "credentials": { ... }                       // required
+  }
+}
+```
+
+**Response:** `{ "result": "DCXXXXXXXX" }` — the DriverChange `id`. To unassign, add another DriverChange with `"driver": { "id": "UnknownDriverId" }`.
+
+---
+
+## GetAddresses (Reverse geocoding)
+
+Converts coordinates to street addresses. Note: `GetAddresses` is a **method**, not a `typeName`:
+
+```json
+{
+  "method": "GetAddresses",
+  "params": {
+    "coordinates": [                       // required, x = longitude, y = latitude
+      { "x": 2.1734, "y": 41.3851 }
+    ],
+    "movingAddresses": false,              // optional, true = format for moving vehicles
+    "credentials": { ... }                 // required
+  }
+}
+```
+
+**Response:** one `Address` per coordinate, in order:
+
+```json
+{
+  "result": [
+    {
+      "formattedAddress": "Carrer de Mallorca 401, 08013 Barcelona, Spain",
+      "city": "Barcelona",
+      "region": "Catalonia",
+      "country": "Spain",
+      "postalCode": "08013",
+      "street": "Carrer de Mallorca"
+    }
+  ]
+}
+```
 
 ---
 
