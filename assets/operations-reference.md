@@ -37,7 +37,9 @@ All calls share this endpoint. `{server}` is the MyGeotab server (e.g., `my.geot
 }
 ```
 
-Use `credentials` + `path` (as the new server) in all subsequent calls.
+Use `credentials` + `path` (as the new server) in all subsequent calls. If `path` is `"ThisServer"`, keep using the server you authenticated against. On `InvalidUserException` in a later call, the session expired — re-authenticate and retry.
+
+All dates in requests and responses are ISO 8601 UTC: `2024-01-01T00:00:00.000Z`.
 
 ---
 
@@ -138,7 +140,7 @@ Use `credentials` + `path` (as the new server) in all subsequent calls.
 }
 ```
 
-Empty `search: {}` returns all entities of that type.
+Empty `search: {}` returns all entities of that type. To fetch a single entity by id, use `search: { "id": "aXXXXXXXXXXX" }`.
 
 ### Common search fields by entity
 
@@ -150,6 +152,30 @@ Empty `search: {}` returns all entities of that type.
 | `LogRecord` | `deviceSearch`, `fromDate`, `toDate` |
 | `StatusData` | `deviceSearch`, `diagnosticSearch`, `fromDate`, `toDate` |
 | `ExceptionEvent` | `deviceSearch`, `ruleSearch`, `fromDate`, `toDate` |
+
+### Get example — trips for a device in a date range
+
+```json
+{
+  "method": "Get",
+  "params": {
+    "typeName": "Trip",
+    "search": {
+      "deviceSearch": { "id": "bXXXXXXXXXXX" },
+      "fromDate": "2024-01-01T00:00:00.000Z",
+      "toDate": "2024-01-08T00:00:00.000Z"
+    },
+    "resultsLimit": 1000,    // optional
+    "credentials": {
+      "database": "CompanyName",
+      "userName": "admin@example.com",
+      "sessionId": "abc123"
+    }
+  }
+}
+```
+
+**Response:** array of `Trip` objects — key fields: `start`, `stop` (timestamps), `distance` (km), `drivingDuration`, `stopDuration`, `maximumSpeed`, `averageSpeed`, `device`, `driver`, `stopPoint` (`{ "x": lon, "y": lat }`).
 
 ---
 
@@ -182,7 +208,7 @@ Empty `search: {}` returns all entities of that type.
 { "result": null }
 ```
 
-Set replaces the full entity — always include all required fields, not just changed ones.
+Set replaces the full entity — always include all required fields, not just changed ones. Omitted fields are wiped. Recommended pattern: `Get` the entity by `id`, modify the fields you need, then `Set` the whole object back.
 
 ---
 
@@ -209,6 +235,8 @@ Set replaces the full entity — always include all required fields, not just ch
 ```json
 { "result": null }
 ```
+
+Removal is irreversible via the API. Non-destructive alternative: deactivate with `Set` by moving `activeTo` to a past date — this hides the entity while preserving its trip/telemetry history.
 
 ---
 
@@ -271,6 +299,69 @@ Save `toVersion` and pass it as `fromVersion` on the next call to get only new r
 
 ---
 
+## Zone (Geofence) — Add example
+
+```json
+{
+  "method": "Add",
+  "params": {
+    "typeName": "Zone",
+    "entity": {
+      "name": "Warehouse Barcelona",
+      "points": [
+        { "x": 2.1734, "y": 41.3851 },
+        { "x": 2.1750, "y": 41.3851 },
+        { "x": 2.1750, "y": 41.3870 },
+        { "x": 2.1734, "y": 41.3870 }
+      ],
+      "zoneTypes": [{ "id": "ZoneTypeCustomerId" }],
+      "groups": [{ "id": "GroupCompanyId" }],
+      "displayed": true,                              // optional, show on map
+      "mustIdentifyStops": false,                     // optional
+      "fillColor": { "r": 255, "g": 0, "b": 0, "a": 80 }, // optional
+      "activeFrom": "2024-01-01T00:00:00.000Z",      // optional
+      "activeTo": "2099-12-31T00:00:00.000Z",        // optional
+      "comment": "Main warehouse geofence"            // optional
+    },
+    "credentials": { ... }
+  }
+}
+```
+
+`points` is the polygon outline: `x` = longitude, `y` = latitude (note the order). The polygon closes automatically. Built-in zone types: `ZoneTypeCustomerId`, `ZoneTypeHomeId`, `ZoneTypeOfficeId`.
+
+---
+
+## ExecuteMultiCall (Batching)
+
+Run several calls in one HTTP request — credentials go once at the top level, not inside each call:
+
+```json
+{
+  "method": "ExecuteMultiCall",
+  "params": {
+    "calls": [
+      { "method": "Get", "params": { "typeName": "Device", "resultsLimit": 10 } },
+      { "method": "Get", "params": { "typeName": "User", "search": { "isDriver": true } } }
+    ],
+    "credentials": {
+      "database": "CompanyName",
+      "userName": "admin@example.com",
+      "sessionId": "abc123"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{ "result": [ [ ...devices ], [ ...drivers ] ] }
+```
+
+`result` is an array with one element per call, in order. If any call fails, the whole MultiCall returns an error — don't mix risky writes into a batch.
+
+---
+
 ## Error response shape
 
 ```json
@@ -287,4 +378,12 @@ Save `toVersion` and pass it as `fromVersion` on the next call to get only new r
 }
 ```
 
-Common error types: `InvalidUserException`, `DbUnavailableException`, `OverLimitException`, `MissingMemberException`.
+Common error types and what to do:
+
+| Type | Meaning | Action |
+|------|---------|--------|
+| `InvalidUserException` | Bad credentials or expired `sessionId` | Re-authenticate and retry |
+| `DbUnavailableException` | Database busy or moved | Retry with backoff; re-check `path` from Authenticate |
+| `OverLimitException` | Result set or rate limit exceeded | Lower `resultsLimit`, paginate with date ranges or `GetFeed` |
+| `MissingMemberException` | Referenced `id` doesn't exist | Verify the `id` with a `Get` call |
+| `DuplicateException` | Entity with same unique field exists | Search for the existing entity first |
