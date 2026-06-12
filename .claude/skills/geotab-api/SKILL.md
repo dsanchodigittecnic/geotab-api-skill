@@ -4,7 +4,7 @@ description: "Trigger: geotab api, create driver, add device, get trips, geotab 
 license: Apache-2.0
 metadata:
   author: gentleman-programming
-  version: "1.5"
+  version: "1.6"
 ---
 
 ## Activation Contract

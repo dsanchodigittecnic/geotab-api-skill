@@ -10,7 +10,7 @@
       "name": "geotab-api",
       "source": "./",
       "description": "Geotab/MyGeotab API skill: translates fleet goals in any language into the exact API call (endpoint, JSON-RPC body, required/optional fields, expected response), with multi-step recipes for onboarding, fleet position, kms per period and continuous sync.",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "license": "Apache-2.0",
       "category": "api",
       "keywords": ["geotab", "mygeotab", "fleet", "telematics"]

@@ -58,6 +58,20 @@ También se activa sola cuando describes una operación de Geotab en la conversa
 - Asignación de conductores (`DriverChange`), streaming incremental (`GetFeed`) y batching (`ExecuteMultiCall`).
 - Recetas multi-paso en `assets/recipes.md`.
 
+## Validación opcional contra la API real
+
+`scripts/validate.py` comprueba que los esquemas documentados coinciden con una base de datos MyGeotab real. Es **totalmente opcional**: sin credenciales no hace nada (exit 0), así que ni la skill ni el plugin la requieren.
+
+```bash
+export GEOTAB_DATABASE="MiEmpresa"
+export GEOTAB_USERNAME="usuario@empresa.com"
+export GEOTAB_PASSWORD="..."          # o GEOTAB_SESSION_ID
+python3 scripts/validate.py           # solo lecturas (un Get acotado por entidad)
+python3 scripts/validate.py --write   # además, ciclo Add→Set→Remove sobre una Zone temporal
+```
+
+Qué verifica: autenticación y resolución del servidor, un `Get` con `resultsLimit: 1` por cada entidad documentada (comparando los campos de la respuesta con los documentados), que los 6 ids de la tabla de diagnósticos existen, `GetAddresses`, `ExecuteMultiCall` y `GetFeed`. Las llamadas fallidas son `FAIL` (exit 1); los campos ausentes en la muestra son solo `WARN`. El modo `--write` crea una zona llamada `ZZ_SKILL_VALIDATION_TEMP` y la elimina al terminar.
+
 ## Versiones
 
 Ver [CHANGELOG.md](CHANGELOG.md). Las versiones se etiquetan en git (`v1.4`, …).
