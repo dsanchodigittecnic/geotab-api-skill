@@ -1,10 +1,10 @@
 ---
 name: geotab-api
-description: "Trigger: geotab api, create driver, add device, get trips, geotab endpoint, geotab call, crear conductor, añadir dispositivo, obtener viajes, eliminar conductor. Map a Geotab goal to HTTP method, endpoint, request body, and expected response."
+description: "Trigger: geotab api, create driver, add device, get trips, geotab endpoint, geotab call, crear conductor, añadir dispositivo, obtener viajes, eliminar conductor, posición de la flota, dónde está el vehículo, odómetro, asignar conductor. Map a Geotab goal to HTTP method, endpoint, request body, and expected response."
 license: Apache-2.0
 metadata:
   author: gentleman-programming
-  version: "1.3"
+  version: "1.4"
 ---
 
 ## Activation Contract
@@ -44,6 +44,8 @@ Activate when the user describes a Geotab operation goal in plain language — i
 ## Execution Steps
 
 1. Parse the user's goal → identify the **verb** and **entity** (e.g., "create" + "driver").
+   - If the goal needs **several chained calls** (onboarding a vehicle with its driver, fleet positions with addresses, km per period, continuous sync), follow the matching workflow in `assets/recipes.md`.
+   - "Where is X / position / posición" → `Get` of `DeviceStatusInfo` (NOT `Device`). Odometer/fuel/engine-hours → `StatusData` with a diagnostic id from the Diagnostics table — never invent diagnostic ids.
 2. Map entity to `typeName` — see `assets/operations-reference.md`.
 3. Select the Geotab `method` from the Decision Gates table.
 4. Build the full request body from the canonical schema in `assets/operations-reference.md`.
@@ -79,3 +81,4 @@ Every response MUST include:
 ## References
 
 - [`assets/operations-reference.md`](assets/operations-reference.md) — canonical entity schemas and field lists
+- [`assets/recipes.md`](assets/recipes.md) — multi-step workflows (onboarding, fleet position, km per period, continuous sync)
