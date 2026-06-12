@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.6 — 2026-06-12
+
+- Nuevo `scripts/validate.py`: validación **opcional** de los esquemas contra una base de datos MyGeotab real. Sin credenciales (variables `GEOTAB_*`) se omite con exit 0; con ellas ejecuta solo lecturas acotadas por entidad, verifica los ids de la tabla de diagnósticos, `GetAddresses`, `ExecuteMultiCall` y `GetFeed`. El flag `--write` añade un ciclo Add→Set→Remove sobre una Zone temporal que se limpia sola. Sin dependencias (solo stdlib de Python).
+
 ## v1.5 — 2026-06-12
 
 - Empaquetada como plugin de Claude Code: `.claude-plugin/plugin.json` (el manifiesto apunta a `.claude/skills/`, sin duplicar la skill) y `.claude-plugin/marketplace.json` (el repo actúa como marketplace `digittecnic`).
